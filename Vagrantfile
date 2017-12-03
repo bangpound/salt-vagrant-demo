@@ -32,7 +32,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           'minion2' => 'saltstack/keys/minion2.pub'
       }
 
-      salt.install_type = "stable"
+      salt.install_type = 'git'
       salt.install_master = true
       salt.no_minion = true
       salt.verbose = true
@@ -60,7 +60,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         salt.minion_config = "saltstack/etc/#{vmname}"
         salt.minion_key = "saltstack/keys/#{vmname}.pem"
         salt.minion_pub = "saltstack/keys/#{vmname}.pub"
-        salt.install_type = "stable"
+        salt.install_type = 'git'
         salt.verbose = true
         salt.colorize = true
         salt.bootstrap_options = '-P -c /tmp'
