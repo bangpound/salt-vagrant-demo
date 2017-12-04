@@ -22,6 +22,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     master_config.vm.network 'private_network', ip: "#{net_ip}.10"
     master_config.vm.synced_folder 'saltstack/salt/', '/srv/salt'
     master_config.vm.synced_folder 'saltstack/pillar/', '/srv/pillar'
+    master_config.vm.synced_folder 'saltstack/etc/master.d/', '/etc/salt/master.d', owner: 'root', group: 'root'
+
+    # noinspection RubyResolve
+    master_config.vm.provision :shell do |shell|
+      shell.inline = 'apt-get install -y avahi-daemon aptitude crudini'
+    end
 
     # noinspection RubyResolve
     master_config.vm.provision :salt do |salt|
@@ -41,7 +47,21 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       salt.no_minion = true
       salt.verbose = true
       salt.colorize = true
-      salt.bootstrap_options = '-P -c /tmp'
+      salt.bootstrap_script = 'saltstack/bootstrap-salt.sh'
+      # salt.bootstrap_options = '-a -V -x python3 -P -c /tmp'
+      salt.bootstrap_options = '-V /opt/salt -P -c /tmp -X'
+    end
+
+    # noinspection RubyResolve
+    master_config.vm.provision :shell do |shell|
+      shell.inline = <<SCRIPT
+crudini --set /lib/systemd/system/salt-master.service Service ExecStart /opt/salt/bin/salt-master
+crudini --set /lib/systemd/system/salt-api.service Service ExecStart /opt/salt/bin/salt-api
+systemctl daemon-reload
+service salt-master start
+/opt/salt/bin/pip install cherrypy ws4py
+service salt-api start
+SCRIPT
     end
   end
 
@@ -64,6 +84,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       minion_config.vm.network 'private_network', ip: "#{ip}"
 
       # noinspection RubyResolve
+      minion_config.vm.provision :shell do |shell|
+        shell.inline = 'apt-get install -y crudini'
+      end
+
+      # noinspection RubyResolve
       minion_config.vm.provision :salt do |salt|
         salt.minion_config = "saltstack/etc/#{vmname}"
         salt.minion_key = "saltstack/keys/#{vmname}.pem"
@@ -71,7 +96,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         salt.install_type = 'git'
         salt.verbose = true
         salt.colorize = true
-        salt.bootstrap_options = '-P -c /tmp'
+        salt.bootstrap_script = 'saltstack/bootstrap-salt.sh'
+        # salt.bootstrap_options = '-a -V -x python3 -P -c /tmp'
+        salt.bootstrap_options = '-V /opt/salt -P -c /tmp -X'
+      end
+
+      # noinspection RubyResolve
+      minion_config.vm.provision :shell do |shell|
+        shell.inline = <<SCRIPT
+crudini --set /lib/systemd/system/salt-minion.service Service ExecStart /opt/salt/bin/salt-minion
+systemctl daemon-reload
+service salt-minion start
+SCRIPT
       end
     end
   end
